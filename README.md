@@ -1,1 +1,1 @@
-psql -U dunder_mifflin -d bookmarks -f ./seeds/seeds.bookmarks_cards.sql
+psql -U dunder_mifflin -d bookmarks-test -f ./seeds/seeds.bookmarks_cards.sql

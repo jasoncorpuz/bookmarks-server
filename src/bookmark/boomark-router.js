@@ -16,7 +16,7 @@ const serializeBookmark = bookmark => ({
     url: bookmark.url,
     description: bookmark.description,
     rating: Number(bookmark.rating),
-  })
+})
 
 bookmarkRouter
     .route('/bookmarks')
@@ -26,29 +26,23 @@ bookmarkRouter
             .then(bkmks => res.json(bkmks))
             .catch(next)
     })
-    .post(bodyParser, (req, res) => {
+    .post(bodyParser, (req, res, next) => {
         //id title rating description
-        const { title, rating, description = '', url } = req.body
+        const { title, url, rating, description = '' } = req.body
+        const newBookmark = { title, rating, description, url }
 
         if (!title) {
             logger.error('Title is required');
             return res
                 .status(400)
-                .send('Data invalid')
+                .send('Title is required')
         }
 
         if (!url) {
             logger.error('Url is required');
             return res
                 .status(400)
-                .send('Data invalid')
-        }
-
-        if (!isWebUri(url)) {
-            logger.error('Url is invalid')
-            return res
-                .status(400)
-                .send('Invalid URL')
+                .send('Url is required')
         }
 
         if (!rating) {
@@ -57,6 +51,13 @@ bookmarkRouter
                 .status(400)
                 .send('Rating must be supplied')
         }
+        if (!isWebUri(url)) {
+            logger.error('Url is invalid')
+            return res
+                .status(400)
+                .send('Invalid URL')
+        }
+
 
         if (rating.length > 1) {
             logger.error('Invalid rating supplied')
@@ -72,22 +73,17 @@ bookmarkRouter
                 .send(`rating must be between 0 and 5`)
         }
         // validate url 
-        const id = uuid()
 
-        const bookmark = {
-            id,
-            title,
-            rating,
-            description,
-            url
-        }
-
-        bookmarks.push(bookmark)
-        logger.info(`Bookmark ${id} created.`);
-        res
-            .status(201)
-            .location(`http://localhost:8000/card${id}`)
-            .json(bookmarks)
+        BookmarksService.insertBookmark(
+            req.app.get('db'), newBookmark
+        )
+            .then(bookmark => {
+                res
+                    .status(201)
+                    .location(`/bookmarks/${bookmark.id}`)
+                    .json(serializeBookmark(bookmark))
+            })
+            .catch(next)
     })
 
 bookmarkRouter
@@ -97,34 +93,32 @@ bookmarkRouter
         const { id } = req.params;
         BookmarksService.getById(knex, id)
             .then(bookmark => {
-                if(!bookmark){
+                if (!bookmark) {
                     logger.error('Bookmark with that id not found')
                     return res.status(404).json({
-                        error: {message: `bookmark not found`}
+                        error: { message: `bookmark not found` }
                     })
-                }res.json(bookmark)
+                } res.json(bookmark)
             })
-        .catch(next)
+            .catch(next)
     })
-    .delete((req, res) => {
-        const { id } = req.params;
-        const bookmarkIdx = bookmarks.findIndex(b => b.id == id);
-
-        if (bookmarkIdx === -1) {
-            logger.error(`Bookmark ${id} not found`);
-            return res
-                .status(404)
-                .send('Bookmark not found')
-        }
-
-        bookmarks.splice(bookmarkIdx, 1);
-
-        logger.info(`Card with id ${id} deleted.`)
-
-        res
-            .status(204)
-            .end();
+    .delete((req, res, next) => {
+        BookmarksService.deleteBookmark(
+            req.app.get('db'),
+            req.params.id
+        )
+            .then(bookmark => {
+                if (!bookmark) {
+                    logger.error('bookmark not found')
+                    return res.status(404).send(`bookmark not found`)
+                }
+            })
+            .then(numRowsAffected => {
+                res.status(204).end()
+            })
+            .catch(next)
     })
+
 
 module.exports = bookmarkRouter
 

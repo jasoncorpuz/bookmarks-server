@@ -15,13 +15,13 @@ const BookmarksService = {
       return knex.from('bookmarks_cards').select('*').where('id', id).first();
     },
   
-    deleteArticle(knex, id) {
+    deleteBookmark(knex, id) {
       return knex('bookmarks_cards')
         .where('id', id)
         .delete();
     },
   
-    updateArticle(knex, id, fields) {
+    updateBookmark(knex, id, fields) {
       return knex('bookmarks_cards')
         .where('id', id)
         .update(fields)
