@@ -118,6 +118,35 @@ bookmarkRouter
             })
             .catch(next)
     })
+    .patch(bodyParser, (req, res, next) => {
+        const { title, description, url, rating } = req.body
+        const bookmarkToUpdate = { title, description, url, rating }
+
+        const valuesExist = Object.values(bookmarkToUpdate).filter(Boolean).length
+        if (valuesExist === 0)
+            return res.status(400).json({
+                error: {
+                    message: `Request body must have at least title, description, url, or rating.`
+                }
+            })
+
+        BookmarksService.updateBookmark(
+            req.app.get('db'),
+            req.params.id,
+            bookmarkToUpdate
+        )
+        .then(bookmark => {
+            if (!bookmark) {
+                logger.error('bookmark not found')
+                return res.status(404).send(`bookmark not found`)
+            }
+        })
+
+        .then(numRowsAffected => {
+            res.status(204).end()
+        })
+            .catch(next)
+    })
 
 
 module.exports = bookmarkRouter

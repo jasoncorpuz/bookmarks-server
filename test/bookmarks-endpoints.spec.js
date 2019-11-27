@@ -301,4 +301,72 @@ describe('Bookmarks Endpoints', () => {
         })
     })
   })
+
+  describe('PATCH bookmarks/:id', () => {
+    context(`given no bookmarks`, () => {
+      it(`responds with 404`, () => {
+        const fakeId = 12345666
+        return supertest(app)
+          .delete(`/bookmarks/${fakeId}`)
+          .set('Authorization', `Bearer ${process.env.API_KEY}`)
+          .expect(404, 'bookmark not found')
+      })
+    })
+
+    context(`given there are bookmarks in the database`, () => {
+      const testBookmarks = fixtures.makeBookmarks()
+
+
+      beforeEach('insert articles', () => {
+        return db
+          .into('bookmarks_cards')
+          .insert(testBookmarks)
+      })
+
+      it('responds with 204 and updates the bookmark', () => {
+        const newId = 2
+        const updatedBkmk = {
+          title: 'updated bookmark',
+          url: 'https://github.com',
+          rating: 2,
+          description: 'lorem ipsum'
+        }
+
+        const expected = {
+          ...testBookmarks[newId - 1],
+          ...updatedBkmk
+        }
+        return supertest(app)
+          .patch(`/bookmarks/${newId}`)
+          .set('Authorization', `Bearer ${process.env.API_KEY}`)
+          .send(updatedBkmk)
+          .expect(204)
+          .then(res =>
+            supertest(app)
+              .get(`/bookmarks/${newId}`)
+              .set('Authorization', `Bearer ${process.env.API_KEY}`)
+              .expect(expected)
+          )
+
+      })
+
+      it('responds 400 when no required fields are supplied', () => {
+        const newId = 2
+        return supertest(app)
+          .patch(`/bookmarks/${newId}`)
+          .set('Authorization', `Bearer ${process.env.API_KEY}`)
+          .send({ foo: 'bar' })
+          .expect(400, { error: { message: `Request body must have at least title, description, url, or rating.` } })
+      })
+
+      it('responds with 204 when only updating some fields', () => {
+        const newId = 2
+        return supertest(app)
+         .patch(`/bookmarks/${newId}`)
+         .set('Authorization', `Bearer ${process.env.API_KEY}`)
+         .send({title: 'bang'})
+         .expect(204)
+      })
+    })
+  })
 })
